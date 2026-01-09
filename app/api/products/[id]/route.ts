@@ -1,37 +1,36 @@
+import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { NextResponse } from "next/server";
+import type { Products } from "@/types/products";
 
-const dataFolder = path.join(process.cwd(), "data");
-const filePath = path.join(dataFolder, "products.json");
+const filePath = path.join(process.cwd(), "data", "products.json");
 
-function readProducts() {
-  if (!fs.existsSync(filePath)) return [];
-  const data = fs.readFileSync(filePath, "utf-8");
-  return data.trim() === "" ? [] : JSON.parse(data);
+function readProducts(): Products[] {
+  return JSON.parse(fs.readFileSync(filePath, "utf-8"));
 }
 
-function saveProducts(products: any[]) {
-  if (!fs.existsSync(dataFolder)) fs.mkdirSync(dataFolder, { recursive: true });
+function saveProducts(products: Products[]) {
   fs.writeFileSync(filePath, JSON.stringify(products, null, 2));
 }
 
 export async function PUT(request: Request, props: { params: Promise<{ id: string }> }) {
   try {
-    const params = await props.params;
-    const id = Number(params.id);
+    const { id: idParam } = await props.params; // Next.js 15 await
+    const id = Number(idParam);
     const body = await request.json();
+    
     const products = readProducts();
-    const index = products.findIndex((p: any) => Number(p.id) === id);
+    const index = products.findIndex((p) => p.id === id);
 
-    if (index === -1) return NextResponse.json({ message: "Producto no encontrado" }, { status: 404 });
+    if (index === -1) return NextResponse.json({ message: "No encontrado" }, { status: 404 });
 
+    // Actualizamos asegurando que price y stock sean números
     products[index] = { 
       ...products[index], 
       ...body, 
-      id, 
-      price: Number(body.price), 
-      stock: Number(body.stock) 
+      id, // Protegemos el ID original
+      price: body.price !== undefined ? Number(body.price) : products[index].price,
+      stock: body.stock !== undefined ? Number(body.stock) : products[index].stock
     };
     
     saveProducts(products);
@@ -43,12 +42,15 @@ export async function PUT(request: Request, props: { params: Promise<{ id: strin
 
 export async function DELETE(request: Request, props: { params: Promise<{ id: string }> }) {
   try {
-    const params = await props.params;
-    const id = Number(params.id);
+    const { id: idParam } = await props.params;
+    const id = Number(idParam);
+    
     const products = readProducts();
-    const filtered = products.filter((p: any) => Number(p.id) !== id);
+    const filtered = products.filter((p) => p.id !== id);
 
-    if (filtered.length === products.length) return NextResponse.json({ message: "No encontrado" }, { status: 404 });
+    if (filtered.length === products.length) {
+      return NextResponse.json({ message: "No encontrado" }, { status: 404 });
+    }
 
     saveProducts(filtered);
     return NextResponse.json({ message: "Producto eliminado" });

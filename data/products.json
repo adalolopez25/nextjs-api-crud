@@ -2,12 +2,7 @@
   {
     "id": 1,
     "name": "ps4",
-    "price": 8000,
-    "stock": 10,
-    "title": "",
-    "level": "",
-    "duration": "",
-    "username": "",
-    "email": ""
+    "price": 2000,
+    "stock": 10
   }
 ]

@@ -4,39 +4,25 @@ import path from "path";
 import type { Products } from "@/types/products";
 
 const filePath = path.join(process.cwd(), "data", "products.json");
+
 function readProducts(): Products[] {
-  const readProducts = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(readProducts);
+  const data = fs.readFileSync(filePath, "utf-8");
+  return JSON.parse(data);
 }
 
 function writeProducts(products: Products[]) {
   fs.writeFileSync(filePath, JSON.stringify(products, null, 2));
 }
 
-export function GET() {
+export async function GET() {
   try {
-    const checkProducts = readProducts();
-
-    if (!checkProducts || checkProducts.length === 0) {
-      return NextResponse.json({
-        message: "Aun no hay productos en el inventario",
-        data: [],
-        status: 200,
-      });
-    }
-    return NextResponse.json(
-      {
-        message: "Solicitud Exitosa",
-        count: checkProducts.length,
-        data: checkProducts,
-      },
-      { status: 200 }
-    );
-  } catch (error) {
+    const products = readProducts();
     return NextResponse.json({
-      message: "Error interno al obtener los productos",
-      status: 500,
-    });
+      message: "Solicitud Exitosa",
+      data: products,
+    }, { status: 200 });
+  } catch (error) {
+    return NextResponse.json({ message: "Error al leer productos" }, { status: 500 });
   }
 }
 
@@ -45,43 +31,23 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, price, stock } = body;
 
-    if (!name || price === undefined || stock === undefined) {
+    // Validación de tipos (importante para que no se guarde basura en el JSON)
+    if (!name || typeof price !== "number" || typeof stock !== "number") {
       return NextResponse.json(
-        {
-          message: "Faltan datos obligatorios (name, price, stock",
-        },
+        { message: "Datos inválidos (name, price y stock son requeridos)" },
         { status: 400 }
       );
     }
 
     const products = readProducts();
+    const nextID = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
 
-    const nextID =
-      products.length > 0 ? products[products.length - 1].id + 1 : 1;
-
-    const addProduct: Products = {
-      id: nextID,
-      name,
-      price,
-      stock,
-    };
-
+    const addProduct: Products = { id: nextID, name, price, stock };
     products.push(addProduct);
     writeProducts(products);
 
-    return NextResponse.json(
-      {
-        message: "Producto creado con exito",
-        data: addProduct,
-      },
-      { status: 201 }
-    );
+    return NextResponse.json({ message: "Producto creado", data: addProduct }, { status: 201 });
   } catch (error) {
-    return NextResponse.json(
-      {
-        message: "Error al procesar la solicitud o JSON invalido",
-      },
-      { status: 400 }
-    );
+    return NextResponse.json({ message: "Error en el servidor" }, { status: 500 });
   }
 }

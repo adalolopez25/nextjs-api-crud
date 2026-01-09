@@ -1,5 +1,44 @@
 @import "tailwindcss";
-
 * {
-  color: black;
+  color: white;
+}
+@layer components {
+  /* Fondo general de la aplicación */
+  .dashboard-wrapper {
+    @apply min-h-screen p-4 md:p-10 transition-all;
+    background-color: #020617; /* Azul noche profundo */
+    color: #f8fafc;
+  }
+
+  /* Tarjetas con efecto cristal oscuro */
+  .glass-card {
+    @apply rounded-[2.5rem] border border-slate-800 shadow-2xl;
+    background-color: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(12px);
+  }
+
+  .label-style {
+    @apply block text-[10px] font-black text-slate-500 mb-1.5 ml-2 uppercase tracking-widest;
+  }
+
+  .input-style {
+    @apply w-full px-5 py-3.5 rounded-2xl outline-none transition-all font-semibold;
+    @apply bg-slate-950 border-2 border-slate-800 text-white focus:border-indigo-500;
+  }
+
+  .tab-button {
+    @apply px-6 py-2 rounded-xl font-bold capitalize transition-all text-slate-500 hover:text-indigo-400;
+  }
+
+  .tab-button-active {
+    @apply bg-indigo-600 text-white shadow-lg shadow-indigo-900/20;
+  }
+
+  .list-item {
+    @apply flex items-center justify-between p-5 rounded-[1.8rem] transition-all border border-transparent;
+    @apply bg-slate-800/40 hover:border-indigo-500/30;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar { @apply w-1.5; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { @apply bg-slate-800 rounded-full; }
 }

@@ -3,10 +3,9 @@ import type { User } from "@/types/users";
 import fs from "fs";
 import path from "path";
 
-// primero se lee el archivo JSON con path.join
 const pathFile = path.join(process.cwd(), "data", "users.json");
 
-function readuser(): User[] {
+function readUser(): User[] {
   const data = fs.readFileSync(pathFile, "utf-8");
   return JSON.parse(data);
 }
@@ -15,34 +14,38 @@ function saveUser(user: User[]) {
   fs.writeFileSync(pathFile, JSON.stringify(user, null, 2));
 }
 
-export function GET() {
-  const users = readuser();
-  return NextResponse.json(users);
+export async function GET() {
+  try {
+    const users = readUser();
+    // Envolvemos en 'data' para que el frontend lo encuentre
+    return NextResponse.json({ data: users });
+  } catch (error) {
+    return NextResponse.json({ message: "Error al leer usuarios", data: [] }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email } = body;
+    // Cambié 'name' por 'username' para que coincida con tu Dashboard
+    const { username, email } = body;
 
-    if (!name || !email) {
-      return NextResponse.json({ message: "Error leve" }, { status: 400 });
+    if (!username || !email) {
+      return NextResponse.json({ message: "Username y Email son obligatorios" }, { status: 400 });
     }
-    const users = readuser();
-
+    
+    const users = readUser();
     const newUser: User = {
       id: users.length ? users[users.length - 1].id + 1 : 1,
-      name,
+      username,
       email,
     };
 
     users.push(newUser);
     saveUser(users);
-    return NextResponse.json(newUser, { status: 201 });
+    
+    return NextResponse.json({ message: "Usuario creado", data: newUser }, { status: 201 });
   } catch {
-    return NextResponse.json(
-      { message: "Error al enviar el body" },
-      { status: 400 }
-    );
+    return NextResponse.json({ message: "Error en el cuerpo de la solicitud" }, { status: 400 });
   }
 }
