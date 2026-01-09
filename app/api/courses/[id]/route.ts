@@ -1,95 +1,96 @@
 import fs from "fs";
 import path from "path";
 import { NextResponse } from "next/server";
-import type { Course } from "@/types/course";
 
-const filePath = path.join(process.cwd(), "data", "courses.json");
+interface Course {
+  id: number;
+  title: string;
+  level: string;
+  duration: number;
+}
 
-// Helper para leer (con manejo de error si el archivo no existe)
+const dataFolder = path.join(process.cwd(), "data");
+const filePath = path.join(dataFolder, "courses.json");
+
 function readCourses(): Course[] {
   try {
+    if (!fs.existsSync(filePath)) return [];
     const data = fs.readFileSync(filePath, "utf-8");
-    return JSON.parse(data);
-  } catch (error) {
-    return []; // Retorna array vacío si hay error al leer
-  }
+    return data.trim() === "" ? [] : JSON.parse(data);
+  } catch (error) { return []; }
 }
 
-// Helper para guardar
 function saveCourses(courses: Course[]) {
-  fs.writeFileSync(filePath, JSON.stringify(courses, null, 2));
+  try {
+    if (!fs.existsSync(dataFolder)) fs.mkdirSync(dataFolder, { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(courses, null, 2));
+  } catch (error) { }
 }
 
-// --- MÉTODO PUT (ACTUALIZAR) ---
+// --- PUT ACTUALIZADO PARA NEXT.JS 15 ---
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } } // Correcto: 2do argumento
+  props: { params: Promise<{ id: string }> } // <-- CAMBIO IMPORTANTE
 ) {
   try {
+    const params = await props.params; // <-- AWAIT NECESARIO
     const id = Number(params.id);
     const body = await request.json();
 
+    if (isNaN(id)) {
+      return NextResponse.json({ message: "ID inválido (Debe ser un número)" }, { status: 400 });
+    }
+
     const courses = readCourses();
-    // Forzamos Number(c.id) por si en el JSON se guardó como string
     const index = courses.findIndex((c) => Number(c.id) === id);
 
     if (index === -1) {
-      return NextResponse.json(
-        { message: `Curso con ID ${id} no encontrado` },
-        { status: 404 }
-      );
+      return NextResponse.json({ message: `Curso ${id} no encontrado` }, { status: 404 });
     }
 
-    const updatedCourse = {
+    const updatedCourse: Course = {
       ...courses[index],
       ...body,
-      id: id, // El ID de la URL siempre manda
+      id: id,
+      duration: body.duration ? Number(body.duration) : courses[index].duration
     };
 
     courses[index] = updatedCourse;
     saveCourses(courses);
 
-    return NextResponse.json({
-      message: "Curso actualizado con éxito",
-      data: updatedCourse,
-    });
+    return NextResponse.json({ message: "Curso actualizado", data: updatedCourse });
+
   } catch (error) {
-    return NextResponse.json(
-      { message: "Error al procesar la actualización" },
-      { status: 400 }
-    );
+    return NextResponse.json({ message: "Error interno" }, { status: 500 });
   }
 }
 
-// --- MÉTODO DELETE (ELIMINAR) ---
+// --- DELETE ACTUALIZADO PARA NEXT.JS 15 ---
 export async function DELETE(
-  request: Request, // Aunque no lo uses, debe ser el 1er parámetro
-  { params }: { params: { id: string } } // Los params son el 2do
+  request: Request,
+  props: { params: Promise<{ id: string }> } // <-- CAMBIO IMPORTANTE
 ) {
   try {
+    const params = await props.params; // <-- AWAIT NECESARIO
     const id = Number(params.id);
+
+    if (isNaN(id)) {
+      return NextResponse.json({ message: "ID inválido" }, { status: 400 });
+    }
+
     const courses = readCourses();
+    const exists = courses.some((c) => Number(c.id) === id);
 
-    // Verificamos si existe antes de filtrar
-    const courseExists = courses.some((c) => Number(c.id) === id);
-
-    if (!courseExists) {
-      return NextResponse.json(
-        { message: "Curso no encontrado" },
-        { status: 404 }
-      );
+    if (!exists) {
+      return NextResponse.json({ message: "Curso no encontrado" }, { status: 404 });
     }
 
     const filteredCourses = courses.filter((c) => Number(c.id) !== id);
     saveCourses(filteredCourses);
 
-    return NextResponse.json({ 
-      message: "Curso eliminado con éxito" 
-    });
+    return NextResponse.json({ message: "Curso eliminado con éxito" });
+
   } catch (error) {
-    return NextResponse.json(
-      { message: "Error al eliminar el curso" },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Error interno" }, { status: 500 });
   }
 }
